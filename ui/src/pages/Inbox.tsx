@@ -51,6 +51,7 @@ import {
   type InboxTab,
 } from "../lib/inbox";
 import { useDismissedInboxItems } from "../hooks/useInboxBadge";
+import { useLanguage } from "@/context/LanguageContext";
 
 type InboxCategoryFilter =
   | "everything"
@@ -108,6 +109,7 @@ function FailedRunInboxRow({
   onRetry: () => void;
   isRetrying: boolean;
 }) {
+  const { t } = useLanguage();
   const issueId = readIssueIdFromRun(run);
   const issue = issueId ? issueById.get(issueId) ?? null : null;
   const displayError = runFailureMessage(run);
@@ -134,7 +136,7 @@ function FailedRunInboxRow({
                   {issue.title}
                 </>
               ) : (
-                <>Failed run{linkedAgentName ? ` — ${linkedAgentName}` : ""}</>
+                <>{t.inbox.failedRun}{linkedAgentName ? ` — ${linkedAgentName}` : ""}</>
               )}
             </span>
             <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -155,7 +157,7 @@ function FailedRunInboxRow({
             disabled={isRetrying}
           >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            {isRetrying ? "Retrying…" : "Retry"}
+            {isRetrying ? t.inbox.retrying : t.inbox.retry}
           </Button>
           <button
             type="button"
@@ -205,6 +207,7 @@ function ApprovalInboxRow({
   onReject: () => void;
   isPending: boolean;
 }) {
+  const { t } = useLanguage();
   const Icon = typeIcon[approval.type] ?? defaultTypeIcon;
   const label = approvalLabel(approval.type, approval.payload as Record<string, unknown> | null);
   const showResolutionButtons =
@@ -229,7 +232,7 @@ function ApprovalInboxRow({
             </span>
             <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span className="capitalize">{approvalStatusLabel(approval.status)}</span>
-              {requesterName ? <span>requested by {requesterName}</span> : null}
+              {requesterName ? <span>{t.inbox.requestedBy} {requesterName}</span> : null}
               <span>updated {timeAgo(approval.updatedAt)}</span>
             </span>
           </span>
@@ -242,7 +245,7 @@ function ApprovalInboxRow({
               onClick={onApprove}
               disabled={isPending}
             >
-              Approve
+              {t.approvals.approve}
             </Button>
             <Button
               variant="destructive"
@@ -251,7 +254,7 @@ function ApprovalInboxRow({
               onClick={onReject}
               disabled={isPending}
             >
-              Reject
+              {t.approvals.reject}
             </Button>
           </div>
         ) : null}
@@ -287,6 +290,7 @@ export function Inbox() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
   const [actionError, setActionError] = useState<string | null>(null);
   const [allCategoryFilter, setAllCategoryFilter] = useState<InboxCategoryFilter>("everything");
   const [allApprovalFilter, setAllApprovalFilter] = useState<InboxApprovalFilter>("all");
@@ -311,8 +315,8 @@ export function Inbox() {
   });
 
   useEffect(() => {
-    setBreadcrumbs([{ label: "Inbox" }]);
-  }, [setBreadcrumbs]);
+    setBreadcrumbs([{ label: t.nav.inbox }]);
+  }, [setBreadcrumbs, t]);
 
   useEffect(() => {
     saveLastInboxTab(tab);
@@ -591,7 +595,7 @@ export function Inbox() {
   });
 
   if (!selectedCompanyId) {
-    return <EmptyState icon={InboxIcon} message="Select a company to view inbox." />;
+    return <EmptyState icon={InboxIcon} message={t.inbox.selectCompany} />;
   }
 
   const hasRunFailures = failedRuns.length > 0;
@@ -641,12 +645,9 @@ export function Inbox() {
           <Tabs value={tab} onValueChange={(value) => navigate(`/inbox/${value}`)}>
             <PageTabBar
               items={[
-                {
-                  value: "recent",
-                  label: "Recent",
-                },
-                { value: "unread", label: "Unread" },
-                { value: "all", label: "All" },
+                { value: "recent", label: t.inbox.tabRecent },
+                { value: "unread", label: t.inbox.tabUnread },
+                { value: "all", label: t.inbox.tabAll },
               ]}
             />
           </Tabs>
@@ -660,7 +661,7 @@ export function Inbox() {
               onClick={() => markAllReadMutation.mutate(unreadIssueIds)}
               disabled={markAllReadMutation.isPending}
             >
-              {markAllReadMutation.isPending ? "Marking…" : "Mark all as read"}
+              {markAllReadMutation.isPending ? t.inbox.markingAllRead : t.inbox.markAllAsRead}
             </Button>
           )}
         </div>
@@ -672,15 +673,15 @@ export function Inbox() {
               onValueChange={(value) => setAllCategoryFilter(value as InboxCategoryFilter)}
             >
               <SelectTrigger className="h-8 w-[170px] text-xs">
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder={t.inbox.categoryPlaceholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="everything">All categories</SelectItem>
-                <SelectItem value="issues_i_touched">My recent issues</SelectItem>
-                <SelectItem value="join_requests">Join requests</SelectItem>
-                <SelectItem value="approvals">Approvals</SelectItem>
-                <SelectItem value="failed_runs">Failed runs</SelectItem>
-                <SelectItem value="alerts">Alerts</SelectItem>
+                <SelectItem value="everything">{t.inbox.categoryAll}</SelectItem>
+                <SelectItem value="issues_i_touched">{t.inbox.categoryMyIssues}</SelectItem>
+                <SelectItem value="join_requests">{t.inbox.categoryJoinRequests}</SelectItem>
+                <SelectItem value="approvals">{t.inbox.categoryApprovals}</SelectItem>
+                <SelectItem value="failed_runs">{t.inbox.categoryFailedRuns}</SelectItem>
+                <SelectItem value="alerts">{t.inbox.categoryAlerts}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -690,12 +691,12 @@ export function Inbox() {
                 onValueChange={(value) => setAllApprovalFilter(value as InboxApprovalFilter)}
               >
                 <SelectTrigger className="h-8 w-[170px] text-xs">
-                  <SelectValue placeholder="Approval status" />
+                  <SelectValue placeholder={t.inbox.approvalStatusPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All approval statuses</SelectItem>
-                  <SelectItem value="actionable">Needs action</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="all">{t.inbox.approvalStatusAll}</SelectItem>
+                  <SelectItem value="actionable">{t.inbox.approvalStatusActionable}</SelectItem>
+                  <SelectItem value="resolved">{t.inbox.approvalStatusResolved}</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -715,10 +716,10 @@ export function Inbox() {
           icon={InboxIcon}
           message={
             tab === "unread"
-              ? "No new inbox items."
+              ? t.inbox.noNewItems
               : tab === "recent"
-                ? "No recent inbox items."
-                : "No inbox items match these filters."
+                ? t.inbox.noRecentItems
+                : t.inbox.noItemsMatchFilter
           }
         />
       )}
@@ -791,8 +792,8 @@ export function Inbox() {
                     )}
                     mobileMeta={
                       issue.lastExternalCommentAt
-                        ? `commented ${timeAgo(issue.lastExternalCommentAt)}`
-                        : `updated ${timeAgo(issue.updatedAt)}`
+                        ? `${t.inbox.commentedAgo} ${timeAgo(issue.lastExternalCommentAt)}`
+                        : `${t.inbox.updatedAgo} ${timeAgo(issue.updatedAt)}`
                     }
                     unreadState={isUnread ? "visible" : isFading ? "fading" : "hidden"}
                     onMarkRead={() => markReadMutation.mutate(issue.id)}
@@ -814,7 +815,7 @@ export function Inbox() {
           {showSeparatorBefore("join_requests") && <Separator />}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Join Requests
+              {t.inbox.sectionJoinRequests}
             </h3>
             <div className="grid gap-3">
               {joinRequests.map((joinRequest) => (
@@ -823,8 +824,8 @@ export function Inbox() {
                     <div className="space-y-1">
                       <p className="text-sm font-medium">
                         {joinRequest.requestType === "human"
-                          ? "Human join request"
-                          : `Agent join request${joinRequest.agentName ? `: ${joinRequest.agentName}` : ""}`}
+                          ? t.inbox.humanJoinRequest
+                          : `${t.inbox.agentJoinRequest}${joinRequest.agentName ? `: ${joinRequest.agentName}` : ""}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         requested {timeAgo(joinRequest.createdAt)} from IP {joinRequest.requestIp}
@@ -845,14 +846,14 @@ export function Inbox() {
                         disabled={approveJoinMutation.isPending || rejectJoinMutation.isPending}
                         onClick={() => rejectJoinMutation.mutate(joinRequest)}
                       >
-                        Reject
+                        {t.approvals.reject}
                       </Button>
                       <Button
                         size="sm"
                         disabled={approveJoinMutation.isPending || rejectJoinMutation.isPending}
                         onClick={() => approveJoinMutation.mutate(joinRequest)}
                       >
-                        Approve
+                        {t.approvals.approve}
                       </Button>
                     </div>
                   </div>
@@ -869,7 +870,7 @@ export function Inbox() {
           {showSeparatorBefore("alerts") && <Separator />}
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Alerts
+              {t.inbox.sectionAlerts}
             </h3>
             <div className="divide-y divide-border border border-border">
               {showAggregateAgentError && (
@@ -904,7 +905,7 @@ export function Inbox() {
                     <span className="text-sm">
                       Budget at{" "}
                       <span className="font-medium">{dashboard!.costs.monthUtilizationPercent}%</span>{" "}
-                      utilization this month
+                      {t.inbox.budgetUtilization}
                     </span>
                   </Link>
                   <button

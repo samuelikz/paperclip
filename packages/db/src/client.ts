@@ -261,6 +261,9 @@ async function applyPendingMigrationsManually(
 
       await runInTransaction(sql, async () => {
         for (const statement of splitMigrationStatements(migrationContent)) {
+          // Skip individual statements that are already applied
+          const statementApplied = await migrationStatementAlreadyApplied(sql, statement);
+          if (statementApplied) continue;
           await sql.unsafe(statement);
         }
 
@@ -399,6 +402,18 @@ async function migrationStatementAlreadyApplied(
   const addConstraintMatch = normalized.match(/^ALTER TABLE "([^"]+)" ADD CONSTRAINT "([^"]+)"/i);
   if (addConstraintMatch) {
     return constraintExists(sql, addConstraintMatch[2]);
+  }
+
+  // For DROP COLUMN statements: if the column doesn't exist, the drop is effectively already done
+  const dropColumnMatch = normalized.match(/^ALTER TABLE "([^"]+)" DROP COLUMN(?: IF EXISTS)? "([^"]+)"/i);
+  if (dropColumnMatch) {
+    return !(await columnExists(sql, dropColumnMatch[1], dropColumnMatch[2]));
+  }
+
+  // For DROP TABLE statements: if the table doesn't exist, the drop is effectively already done
+  const dropTableMatch = normalized.match(/^DROP TABLE(?: IF EXISTS)? "([^"]+)"/i);
+  if (dropTableMatch) {
+    return !(await tableExists(sql, dropTableMatch[1]));
   }
 
   // If we cannot reason about a statement safely, require manual migration.

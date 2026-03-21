@@ -67,6 +67,14 @@ import {
   agentConfigurationDoc as piAgentConfigurationDoc,
 } from "@paperclipai/adapter-pi-local";
 import {
+  execute as ollamaExecute,
+  testEnvironment as ollamaTestEnvironment,
+  listOllamaModelsCached,
+} from "@paperclipai/adapter-ollama-local/server";
+import {
+  agentConfigurationDoc as ollamaAgentConfigurationDoc,
+} from "@paperclipai/adapter-ollama-local";
+import {
   execute as hermesExecute,
   testEnvironment as hermesTestEnvironment,
   sessionCodec as hermesSessionCodec,
@@ -171,6 +179,16 @@ const piLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: piAgentConfigurationDoc,
 };
 
+const ollamaLocalAdapter: ServerAdapterModule = {
+  type: "ollama_local",
+  execute: ollamaExecute,
+  testEnvironment: ollamaTestEnvironment,
+  models: [],
+  listModels: () => listOllamaModelsCached(),
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: ollamaAgentConfigurationDoc,
+};
+
 const hermesLocalAdapter: ServerAdapterModule = {
   type: "hermes_local",
   execute: hermesExecute,
@@ -187,6 +205,7 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     codexLocalAdapter,
     openCodeLocalAdapter,
     piLocalAdapter,
+    ollamaLocalAdapter,
     cursorLocalAdapter,
     geminiLocalAdapter,
     openclawGatewayAdapter,

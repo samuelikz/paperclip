@@ -12,6 +12,7 @@ import { PanelProvider } from "./context/PanelContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { DialogProvider } from "./context/DialogContext";
 import { ToastProvider } from "./context/ToastContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { initPluginBridge } from "./plugins/bridge-init";
@@ -39,29 +40,31 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <CompanyProvider>
-          <ToastProvider>
-            <LiveUpdatesProvider>
-              <BrowserRouter>
-                <TooltipProvider>
-                  <BreadcrumbProvider>
-                    <SidebarProvider>
-                      <PanelProvider>
-                        <PluginLauncherProvider>
-                          <DialogProvider>
-                            <App />
-                          </DialogProvider>
-                        </PluginLauncherProvider>
-                      </PanelProvider>
-                    </SidebarProvider>
-                  </BreadcrumbProvider>
-                </TooltipProvider>
-              </BrowserRouter>
-            </LiveUpdatesProvider>
-          </ToastProvider>
-        </CompanyProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <CompanyProvider>
+            <ToastProvider>
+              <LiveUpdatesProvider>
+                <BrowserRouter>
+                  <TooltipProvider>
+                    <BreadcrumbProvider>
+                      <SidebarProvider>
+                        <PanelProvider>
+                          <PluginLauncherProvider>
+                            <DialogProvider>
+                              <App />
+                            </DialogProvider>
+                          </PluginLauncherProvider>
+                        </PanelProvider>
+                      </SidebarProvider>
+                    </BreadcrumbProvider>
+                  </TooltipProvider>
+                </BrowserRouter>
+              </LiveUpdatesProvider>
+            </ToastProvider>
+          </CompanyProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   </StrictMode>
 );

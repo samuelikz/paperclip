@@ -5,6 +5,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { useDialog } from "../context/DialogContext";
 import { useSidebar } from "../context/SidebarContext";
+import { useLanguage } from "../context/LanguageContext";
 import { agentsApi } from "../api/agents";
 import { heartbeatsApi } from "../api/heartbeats";
 import { queryKeys } from "../lib/queryKeys";
@@ -44,6 +45,7 @@ export function SidebarAgents() {
   const { selectedCompanyId } = useCompany();
   const { openNewAgent } = useDialog();
   const { isMobile, setSidebarOpen } = useSidebar();
+  const { t } = useLanguage();
   const location = useLocation();
 
   const { data: agents } = useQuery({
@@ -91,7 +93,7 @@ export function SidebarAgents() {
               )}
             />
             <span className="text-[10px] font-medium uppercase tracking-widest font-mono text-muted-foreground/60">
-              Agents
+              {t.nav.agents}
             </span>
           </CollapsibleTrigger>
           <button
@@ -100,7 +102,7 @@ export function SidebarAgents() {
               openNewAgent();
             }}
             className="flex items-center justify-center h-4 w-4 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-colors"
-            aria-label="New agent"
+            aria-label={t.accessibility.newAgent}
           >
             <Plus className="h-3 w-3" />
           </button>
@@ -130,7 +132,7 @@ export function SidebarAgents() {
                 {(agent.pauseReason === "budget" || runCount > 0) && (
                   <span className="ml-auto flex items-center gap-1.5 shrink-0">
                     {agent.pauseReason === "budget" ? (
-                      <BudgetSidebarMarker title="Agent paused by budget" />
+                      <BudgetSidebarMarker title={t.agents.agentPausedByBudget} />
                     ) : null}
                     {runCount > 0 ? (
                       <span className="relative flex h-2 w-2">
@@ -140,7 +142,7 @@ export function SidebarAgents() {
                     ) : null}
                     {runCount > 0 ? (
                       <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                        {runCount} live
+                        {runCount} {t.agents.live}
                       </span>
                     ) : null}
                   </span>
