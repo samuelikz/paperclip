@@ -391,27 +391,61 @@ docker exec paperclip-server kill -SIGUSR1 1
 
 ### Automated Backups
 
-Create a backup script:
+The automated backup script is at `scripts/backup-db-auto.sh`. It handles:
+
+- **Scheduled pg_dump** via `docker exec` to the running postgres container
+- **Integrity verification** — restores the dump into a temp container and validates schema
+- **Retention policy** — keeps the N most recent backups (configurable via `BACKUP_KEEP_COUNT`)
+- **Failure notification** — sends a webhook POST on failure (configurable via `NOTIFY_WEBHOOK_URL`)
+- **Structured JSON logging** — compatible with Loki log aggregation
+
+**Setup:**
 
 ```bash
-cat > /opt/paperclip/backup.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/opt/paperclip/backups"
-mkdir -p $BACKUP_DIR
+# Ensure the script is executable
+chmod +x /opt/paperclip/scripts/backup-db-auto.sh
 
-# Backup database
-docker-compose -f /opt/paperclip/docker-compose.prod.yml exec -T db \
-  pg_dump -U paperclip_prod -Fc paperclip_prod > \
-  "$BACKUP_DIR/paperclip-$(date +%Y%m%d-%H%M%S).dump"
+# Create backups directory
+mkdir -p /opt/paperclip/backups
 
-# Keep only last 30 days
-find $BACKUP_DIR -name "*.dump" -mtime +30 -delete
-EOF
+# Test a manual run first
+PAPERCLIP_DIR=/opt/paperclip /opt/paperclip/scripts/backup-db-auto.sh
 
-chmod +x /opt/paperclip/backup.sh
+# Production: backup every 6 hours
+(crontab -l 2>/dev/null; echo "0 */6 * * * PAPERCLIP_DIR=/opt/paperclip BACKUP_KEEP_COUNT=28 /opt/paperclip/scripts/backup-db-auto.sh >> /var/log/paperclip-backup.log 2>&1") | crontab -
 
-# Run daily at 2 AM
-(crontab -l 2>/dev/null; echo "0 2 * * * /opt/paperclip/backup.sh") | crontab -
+# Staging: backup once daily at 2 AM
+(crontab -l 2>/dev/null; echo "0 2 * * * PAPERCLIP_DIR=/opt/paperclip /opt/paperclip/scripts/backup-db-auto.sh >> /var/log/paperclip-backup.log 2>&1") | crontab -
+
+# With failure webhook notification
+(crontab -l 2>/dev/null; echo "0 */6 * * * PAPERCLIP_DIR=/opt/paperclip NOTIFY_WEBHOOK_URL=https://hooks.slack.com/... /opt/paperclip/scripts/backup-db-auto.sh >> /var/log/paperclip-backup.log 2>&1") | crontab -
+```
+
+**Configuration variables:**
+
+| Variable             | Default                   | Description                          |
+|----------------------|---------------------------|--------------------------------------|
+| `PAPERCLIP_DIR`      | Script parent directory   | Project root                         |
+| `BACKUP_DIR`         | `$PAPERCLIP_DIR/backups`  | Where to store dump files            |
+| `BACKUP_KEEP_COUNT`  | `14`                      | Number of backups to retain          |
+| `DB_CONTAINER`       | `paperclip-db`            | Postgres container name              |
+| `DB_USER`            | `paperclip`               | Database user                        |
+| `DB_NAME`            | `paperclip`               | Database name                        |
+| `VERIFY_BACKUP`      | `true`                    | Run integrity check after backup     |
+| `NOTIFY_WEBHOOK_URL` | _(empty)_                 | Webhook URL to POST on failure       |
+| `LOG_FORMAT`         | `json`                    | Log format: `json` or `text`         |
+
+**Monitor backup logs:**
+
+```bash
+# View recent backup activity (JSON logs)
+tail -f /var/log/paperclip-backup.log
+
+# List current backups with sizes
+ls -lh /opt/paperclip/backups/
+
+# Count retained backups
+ls /opt/paperclip/backups/paperclip-*.dump | wc -l
 ```
 
 ### Backup Volumes

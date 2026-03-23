@@ -187,18 +187,42 @@ Use this checklist to ensure your production deployment is properly configured a
 ## Backup & Disaster Recovery
 
 ### Backup Strategy
-- [ ] Backup script created and tested
-- [ ] Backups stored in separate location
-- [ ] Backup retention policy defined
-- [ ] Automated backup scheduled (cron)
-- [ ] Backup success notifications configured
+- [ ] Backup script created and tested (`scripts/backup-db-auto.sh`)
+- [ ] Backups directory created (`/opt/paperclip/backups`)
+- [ ] Backups stored in separate/offsite location
+- [ ] Retention policy configured via `BACKUP_KEEP_COUNT` env var (default: 14)
+- [ ] Automated backup scheduled (cron — see below)
+- [ ] Failure notification configured via `NOTIFY_WEBHOOK_URL` (optional)
+
+### Automated Backup Cron Setup
+```bash
+# Install cron job — production: every 6 hours
+(crontab -l 2>/dev/null; echo "0 */6 * * * PAPERCLIP_DIR=/opt/paperclip /opt/paperclip/scripts/backup-db-auto.sh >> /var/log/paperclip-backup.log 2>&1") | crontab -
+
+# Or staging: once daily at 2 AM
+(crontab -l 2>/dev/null; echo "0 2 * * * PAPERCLIP_DIR=/opt/paperclip /opt/paperclip/scripts/backup-db-auto.sh >> /var/log/paperclip-backup.log 2>&1") | crontab -
+
+# Verify cron is installed
+crontab -l
+```
+
+Configurable via environment variables in the cron line:
+| Variable             | Default                         | Description                          |
+|----------------------|---------------------------------|--------------------------------------|
+| `PAPERCLIP_DIR`      | Script parent directory         | Project root                         |
+| `BACKUP_DIR`         | `$PAPERCLIP_DIR/backups`        | Where to store dump files            |
+| `BACKUP_KEEP_COUNT`  | `14`                            | Number of backups to retain          |
+| `DB_CONTAINER`       | `paperclip-db`                  | Postgres container name              |
+| `VERIFY_BACKUP`      | `true`                          | Run integrity check after backup     |
+| `NOTIFY_WEBHOOK_URL` | _(empty)_                       | Webhook URL to POST on failure       |
+| `LOG_FORMAT`         | `json`                          | Log format: `json` or `text`         |
 
 ### Restore Procedure
-- [ ] Restore process documented
-- [ ] Test restore from backup performed
+- [ ] Restore process documented (see DEPLOYMENT.md → Backup & Restore)
+- [ ] Test restore from backup performed (`pg_restore` via docker exec)
 - [ ] Recovery Time Objective (RTO) defined
-- [ ] Recovery Point Objective (RPO) defined
-- [ ] Backup verification automated
+- [ ] Recovery Point Objective (RPO) defined: aligns with cron schedule (6h prod / 24h staging)
+- [ ] Backup integrity automatically verified after each backup (`VERIFY_BACKUP=true`)
 
 ### Data Migration
 - [ ] Database export/import tested
