@@ -339,52 +339,91 @@ sudo crontab -e
 # Add line: 0 3 * * * /opt/paperclip/renew-certs.sh
 ```
 
-## Monitoring & Logs
+## Monitoring & Observability
 
-### View Logs
+Paperclip ships a full observability stack via `docker-compose.monitoring.yml`:
+
+| Service         | Purpose                                         | Port (host)  |
+|-----------------|-------------------------------------------------|--------------|
+| Grafana         | Dashboards for metrics and logs                 | `3000`       |
+| Prometheus      | Metrics collection + alerting engine            | `9090` (lo)  |
+| Alertmanager    | Alert routing (webhook / Slack)                 | `9093` (lo)  |
+| Loki            | Log aggregation (Pino logs from all containers) | internal     |
+| Promtail        | Docker log shipper to Loki                      | internal     |
+| node-exporter   | Host CPU / memory / disk metrics                | internal     |
+| cAdvisor        | Per-container CPU / memory / network metrics    | internal     |
+| blackbox-exporter | HTTP health probe (uptime, response time)     | internal     |
+
+### Quick Start (monitoring stack)
+
+```bash
+# Start prod stack + monitoring together
+docker compose -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+
+# Or add monitoring to an existing prod stack
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+**First time setup:**
+1. Open Grafana at `http://<host>:3000` — default credentials `admin` / `admin`
+2. Change password on first login
+3. The **Paperclip — Operations Overview** dashboard is auto-provisioned
+4. Set `GRAFANA_ADMIN_PASSWORD` in your `.env.prod` to override the default
+
+### Configure Alertmanager
+
+Edit `monitoring/alertmanager/alertmanager.yml` to add your notification channel:
+
+```bash
+# Slack webhook example — replace the webhook_configs section:
+# slack_configs:
+#   - api_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+#     channel: '#alerts'
+#     send_resolved: true
+
+# Reload config without restart
+curl -X POST http://localhost:9093/-/reload
+```
+
+### Pre-configured Alert Rules (`monitoring/prometheus/rules/alerts.yml`)
+
+| Alert                | Condition                              | Severity |
+|----------------------|----------------------------------------|----------|
+| `ServerDown`         | Health probe failing > 2 min           | critical |
+| `NginxDown`          | Nginx health probe failing > 2 min     | critical |
+| `DatabaseDown`       | DB container absent > 2 min            | critical |
+| `HighMemoryUsage`    | Server container > 85% memory > 5 min  | warning  |
+| `LowDiskSpace`       | Host disk < 15% free > 10 min          | warning  |
+| `ContainerRestarting`| Any paperclip container > 3 restarts/30m | warning |
+
+### Dashboard Panels
+
+The auto-provisioned **Paperclip — Operations Overview** dashboard includes:
+
+- Server and Nginx health status (green/red)
+- Server response time and uptime
+- Active alert count
+- CPU usage per container (timeseries)
+- Memory usage per container (timeseries)
+- Host disk space available
+- Network I/O per container
+- Live server logs (from Loki)
+- Error log stream filtered by `level=error|fatal`
+
+### Basic Log Commands (without monitoring stack)
 
 ```bash
 # All services
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Specific service
-docker-compose -f docker-compose.prod.yml logs -f server
-docker-compose -f docker-compose.prod.yml logs -f nginx
-docker-compose -f docker-compose.prod.yml logs -f db
-```
-
-### Health Checks
-
-Health checks are configured in `docker-compose.prod.yml`:
-
-```bash
-# Check service health
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f server
 
 # Manual health check
 curl http://localhost:3100/health
-```
 
-### Monitor Resource Usage
-
-```bash
 # Watch container stats
-docker stats
-
-# Specific container
 docker stats paperclip-server
-```
-
-### Persistent Logs
-
-Docker is configured with JSON file logging (10MB per file, max 3 files):
-
-```bash
-# View log file location
-docker inspect paperclip-server | grep LogPath
-
-# Rotate logs manually
-docker exec paperclip-server kill -SIGUSR1 1
 ```
 
 ## Backup & Restore

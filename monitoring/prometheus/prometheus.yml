@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # Host system metrics (CPU, memory, disk, network)
+  - job_name: node
+    static_configs:
+      - targets: [node-exporter:9100]
+
+  # Container metrics (per-container CPU, memory, restarts)
+  - job_name: cadvisor
+    static_configs:
+      - targets: [cadvisor:8080]
+    metric_relabel_configs:
+      # Keep only paperclip containers to reduce cardinality
+      - source_labels: [container_label_com_docker_compose_service]
+        regex: (server|db|nginx)
+        action: keep
+
+  # HTTP health probe for server and nginx
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://server:3100/health
+          - http://nginx:80/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - replacement: blackbox-exporter:9115
+        target_label: __address__

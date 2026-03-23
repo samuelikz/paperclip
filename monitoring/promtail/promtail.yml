@@ -1,0 +1,48 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Collect logs from all Docker containers via Docker socket
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          # Only scrape paperclip containers
+          - name: label
+            values: [com.docker.compose.project=paperclip]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        target_label: container
+        regex: /(.*)
+        replacement: $1
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: project
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: stream
+    pipeline_stages:
+      # Parse JSON logs from Pino (the Node.js logger used by Paperclip)
+      - json:
+          expressions:
+            level: level
+            msg: msg
+            time: time
+            reqId: reqId
+      - labels:
+          level:
+          service:
+      - timestamp:
+          source: time
+          format: Unix
+          fallback_formats:
+            - "2006-01-02T15:04:05Z07:00"

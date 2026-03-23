@@ -1,0 +1,38 @@
+global:
+  # Default timeout for alerts
+  resolve_timeout: 5m
+
+route:
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: default
+
+  routes:
+    # Critical alerts route immediately
+    - match:
+        severity: critical
+      receiver: default
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: default
+    webhook_configs:
+      # Set ALERTMANAGER_WEBHOOK_URL env var or update this URL
+      - url: ${ALERTMANAGER_WEBHOOK_URL:-http://localhost:9999/noop}
+        send_resolved: true
+        title: '{{ template "custom_title" . }}'
+        text: '{{ template "custom_message" . }}'
+
+# To integrate with Slack, replace webhook_configs above with:
+# slack_configs:
+#   - api_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+#     channel: '#alerts'
+#     title: '{{ template "slack.default.title" . }}'
+#     text: '{{ template "slack.default.text" . }}'
+#     send_resolved: true
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl

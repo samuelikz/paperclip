@@ -1,0 +1,68 @@
+groups:
+  - name: paperclip-critical
+    interval: 30s
+    rules:
+      # Server health probe down for more than 2 minutes
+      - alert: ServerDown
+        expr: probe_success{instance="http://server:3100/health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Paperclip server is down"
+          description: "Health probe to {{ $labels.instance }} has been failing for more than 2 minutes."
+
+      # Nginx down
+      - alert: NginxDown
+        expr: probe_success{instance="http://nginx:80/health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx reverse proxy is down"
+          description: "Health probe to {{ $labels.instance }} has been failing for more than 2 minutes."
+
+      # Database container not running
+      - alert: DatabaseDown
+        expr: absent(container_last_seen{name="paperclip-db"}) or container_last_seen{name="paperclip-db"} < (time() - 120)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Paperclip database container is down"
+          description: "The paperclip-db container has not been seen for more than 2 minutes."
+
+  - name: paperclip-resources
+    interval: 60s
+    rules:
+      # High memory usage (server container > 85%)
+      - alert: HighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes{name="paperclip-server"} /
+           container_spec_memory_limit_bytes{name="paperclip-server"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Server container high memory usage"
+          description: "Server container is using more than 85% of its memory limit for 5 minutes."
+
+      # Host disk space running low (< 15% free)
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs",mountpoint="/"} / node_filesystem_size_bytes{fstype!="tmpfs",mountpoint="/"}) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk space running low"
+          description: "Less than 15% disk space remaining on {{ $labels.mountpoint }}."
+
+      # Container restarting frequently
+      - alert: ContainerRestarting
+        expr: increase(container_start_time_seconds{name=~"paperclip-.*"}[30m]) > 3
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting frequently"
+          description: "Container {{ $labels.name }} has restarted more than 3 times in the last 30 minutes."
