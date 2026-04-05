@@ -5,7 +5,7 @@ import { instanceSettingsApi } from "@/api/instanceSettings";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useLanguage } from "../context/LanguageContext";
 import { queryKeys } from "../lib/queryKeys";
-import { cn } from "../lib/utils";
+import { ToggleSwitch } from "@/components/ui/toggle-switch";
 
 export function InstanceExperimentalSettings() {
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -83,23 +83,12 @@ export function InstanceExperimentalSettings() {
               {t.settings.enableIsolatedWorkspacesDescription}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={t.accessibility.toggleIsolatedWorkspaces}
+          <ToggleSwitch
+            checked={enableIsolatedWorkspaces}
+            onCheckedChange={() => toggleMutation.mutate({ enableIsolatedWorkspaces: !enableIsolatedWorkspaces })}
             disabled={toggleMutation.isPending}
-            className={cn(
-              "relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-              enableIsolatedWorkspaces ? "bg-green-600" : "bg-muted",
-            )}
-            onClick={() => toggleMutation.mutate({ enableIsolatedWorkspaces: !enableIsolatedWorkspaces })}
-          >
-            <span
-              className={cn(
-                "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform",
-                enableIsolatedWorkspaces ? "translate-x-4.5" : "translate-x-0.5",
-              )}
-            />
-          </button>
+            aria-label={t.accessibility.toggleIsolatedWorkspaces}
+          />
         </div>
       </section>
 
@@ -111,25 +100,12 @@ export function InstanceExperimentalSettings() {
               {t.settings.autoRestartDevServerDescription}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={t.accessibility.toggleAutoRestart}
+          <ToggleSwitch
+            checked={autoRestartDevServerWhenIdle}
+            onCheckedChange={() => toggleMutation.mutate({ autoRestartDevServerWhenIdle: !autoRestartDevServerWhenIdle })}
             disabled={toggleMutation.isPending}
-            className={cn(
-              "relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-              autoRestartDevServerWhenIdle ? "bg-green-600" : "bg-muted",
-            )}
-            onClick={() =>
-              toggleMutation.mutate({ autoRestartDevServerWhenIdle: !autoRestartDevServerWhenIdle })
-            }
-          >
-            <span
-              className={cn(
-                "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform",
-                autoRestartDevServerWhenIdle ? "translate-x-4.5" : "translate-x-0.5",
-              )}
-            />
-          </button>
+            aria-label={t.accessibility.toggleAutoRestart}
+          />
         </div>
       </section>
     </div>
